@@ -1,0 +1,277 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>2048</title>
+
+    <link href="style/main.css" rel="stylesheet" type="text/css">
+    <link rel="shortcut icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="meta/apple-touch-icon.png">
+    <link rel="apple-touch-startup-image" href="meta/apple-touch-startup-image-640x1096.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)">
+    <!-- iPhone 5+ -->
+    <link rel="apple-touch-startup-image" href="meta/apple-touch-startup-image-640x920.png" media="(device-width: 320px) and (device-height: 480px) and (-webkit-device-pixel-ratio: 2)">
+    <!-- iPhone, retina -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+    <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0, maximum-scale=1, user-scalable=no, minimal-ui">
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="heading">
+            <h1 class="title">2048</h1>
+            <div class="scores-container">
+                <div class="score-container">0</div>
+                <div class="best-container">0</div>
+            </div>
+        </div>
+
+        <div class="above-game">
+            <p class="game-intro">Join the numbers and get to the <strong>2048 tile!</strong></p>
+            <a class="restart-button">New Game</a>
+            <div style="width:100%;justify-content: flex-end;display: flex;">
+                <a class="login-button" id="login" style="background: #8f7a66;
+                                                            border-radius: 3px;
+                                                            padding: 0 20px;
+                                                            text-decoration: none;
+                                                            color: #f9f6f2;
+                                                            height: 40px;
+                                                            line-height: 42px;
+                                                            display: block;
+                                                            text-align: center;
+                    ">Login</a>
+            </div>
+            <p id="wallet"></p>
+            <h2>HighScores:</h2>
+            <div id="HighScore" style="max-height: 120px; overflow: auto;">
+            </div>
+
+            <div class="file-input" id="input_file" style="position: absolute;
+                                            z-index: 999;
+                                            background: #8f7a66;
+                                            top: 50%;
+                                            padding: 10px;
+                                            left: 49vw;
+                                            min-width: 60vw;
+                                            color: white;
+                                            border: 1px solid white;
+                                            transform: translate(-50%, -50%);
+                                            display: none;">
+                <input type="file" id="file" onchange="login(this.files)">
+
+                <script>
+                    (function () {
+                        document.addEventListener('click', function (event) {
+
+                            if (!event.target.matches('#login') && !event.target.matches('#input_file') && !event.target.matches('#file') && !event.target.matches('#dropzone')) {
+                                document.getElementById("input_file").style.display = "none";
+
+                            } else {
+                                document.getElementById("input_file").style.display = "block";
+                            }
+
+
+
+                        }, false);
+
+                    })();
+
+
+                    function login(files) {
+
+                        const fr = new FileReader()
+                        fr.onload = function (ev) {
+                            try {
+                                wallet = JSON.parse(ev.target.result);
+
+                                arweave.wallets.jwkToAddress(wallet).then((address) => {
+
+                                    let get_Scores = arweave.arql({
+                                        op: 'and',
+                                        expr1: {
+                                            op: 'equals',
+                                            expr1: 'from',
+                                            expr2: address
+                                        },
+                                        expr2: {
+                                            op: "or",
+                                            expr1: {
+                                                op: "equals",
+                                                expr1: "type",
+                                                expr2: "post"
+                                            },
+                                            expr2: {
+                                                op: "equals",
+                                                expr1: "App-Name",
+                                                expr2: "2048"
+                                            }
+                                        }
+
+                                    })
+
+                                    console.log(get_Scores)
+                                    get_Scores.then(function (response) {
+                                        var highScores = [];
+                                        var HighScore = document.getElementById("HighScore");
+                                        for (var i = 0; i < response.length; i++) {
+                                            arweave.transactions.get(response[i]).then(function (data) {
+                                                //console.log(data);
+
+                                                highScores.push(JSON.parse(data.get('data', { decode: true, string: true })))
+                                                var highscore = JSON.parse(data.get('data', { decode: true, string: true }));
+                                                //console.log(highscore.BScore);
+                                                if (highscore.BScore)
+                                                    HighScore.innerHTML += "<p>" + highscore.BScore + "</p>";
+                                                console.log(highscore.BScore)
+                                            });
+                                        }
+                                    })
+
+                                    console.log(`Wallet address: ${address}`)
+
+
+                                    document.getElementById("login").style.display = "none";
+                                    document.getElementById("login").textContent = "Logged in"
+
+                                    arweave.wallets.getBalance(address).then((balance) => {
+                                        let winston = balance;
+                                        let ar = arweave.ar.winstonToAr(balance);
+
+                                        console.log(winston + " Winston");
+                                        console.log(ar + " Ar");
+
+                                        document.getElementById("file").style.display = "none";
+                                        document.getElementById("input_file").style.display = "none";
+                                        document.getElementById("wallet").innerHTML =
+                                            "<br><b>Wallet:</b> " + address + "<br><b>Balance:</b> " + ar;
+                                    });
+                                });
+
+                            } catch (err) {
+                                console.log('Error logging in: ', err);
+                            }
+                        };
+
+                        //console.log(localStorage.bestScore)
+                        fr.readAsText(files[0]);
+                    }
+
+
+
+
+
+
+                </script>
+                <p id="dropzone">Place your wallet keyfile to login</p>
+            </div>
+
+            <div class="game-container">
+                <div class="game-message">
+                    <p></p>
+                    <div class="lower">
+                        <a class="keep-playing-button">Keep going</a>
+                        <a class="retry-button">Try again</a>
+                        <a class="save-button" id="save">Save Score</a>
+                        <script>
+                            let save = document.getElementById("save");
+
+                            save.addEventListener("click", saveScore)
+
+                            function saveScore() {
+                                var scoreObj = {
+                                    BScore: localStorage.bestScore
+                                };
+
+                                localStorage.setItem('BScore', JSON.stringify(scoreObj));
+
+                                (async () => {
+
+                                    const tx =
+                                        await arweave.createTransaction({
+                                            data: JSON.stringify(scoreObj),
+                                        },
+                                            wallet,
+                                        )
+
+                                    tx.addTag('App-Name', '2048')
+                                    tx.addTag('App-Version', '1.0')
+                                    await arweave.transactions.sign(tx, wallet)
+                                    console.log(tx.id)
+                                    console.log(tx.data)
+                                    await arweave.transactions.post(tx)
+                                    alert('Best score saved')
+
+
+                                })()
+                            }
+                        </script>
+                    </div>
+                </div>
+
+                <div class="grid-container">
+                    <div class="grid-row">
+                        <div class="grid-cell"></div>
+                        <div class="grid-cell"></div>
+                        <div class="grid-cell"></div>
+                        <div class="grid-cell"></div>
+                    </div>
+                    <div class="grid-row">
+                        <div class="grid-cell"></div>
+                        <div class="grid-cell"></div>
+                        <div class="grid-cell"></div>
+                        <div class="grid-cell"></div>
+                    </div>
+                    <div class="grid-row">
+                        <div class="grid-cell"></div>
+                        <div class="grid-cell"></div>
+                        <div class="grid-cell"></div>
+                        <div class="grid-cell"></div>
+                    </div>
+                    <div class="grid-row">
+                        <div class="grid-cell"></div>
+                        <div class="grid-cell"></div>
+                        <div class="grid-cell"></div>
+                        <div class="grid-cell"></div>
+                    </div>
+                </div>
+
+                <div class="tile-container">
+
+                </div>
+            </div>
+
+            <p class="game-explanation">
+                <strong class="important">How to play:</strong> Use your <strong>arrow keys or WASD</strong> to move the tiles. When two tiles with the same number touch, they <strong>merge into one!</strong>
+            </p>
+        </div>
+    <script src="https://unpkg.com/arweave/bundles/web.bundle.js"></script>
+    <script src="https://unpkg.com/arweave/bundles/web.bundle.min.js"></script>
+    <script>
+        var wallet = {};
+        var arweave = Arweave.init({
+            host: 'arweave.net',
+            port: 443,
+            protocol: 'https',
+            timeout: 20000,
+            logging: false,
+        });
+        arweave.network.getInfo().then(console.log);
+    </script>
+    <script src="js/bind_polyfill.js"></script>
+    <script src="js/classlist_polyfill.js"></script>
+    <script src="js/animframe_polyfill.js"></script>
+    <script src="js/keyboard_input_manager.js"></script>
+    <script src="js/html_actuator.js"></script>
+    <script src="js/grid.js"></script>
+    <script src="js/tile.js"></script>
+    <script src="js/local_storage_manager.js"></script>
+    <script src="js/game_manager.js"></script>
+    <script src="js/application.js"></script>
+</body>
+
+</html>
